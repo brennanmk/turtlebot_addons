@@ -1,0 +1,13 @@
+<arg name="robot_name"/>
+
+<param name="robot_name" value="$(arg robot_name)" />
+
+<launch>
+  <node name="system_monitor" pkg="turtlebot_addons" type="system_monitor" />
+</launch>
+
+<launch>
+  <node name="affectual_mapping" pkg="turtlebot_addons" type="affectual_mapping" />
+</launch>
+
+<include file="$(find ros_tcp_endpoint)/launch/endpoint.launch" pass_all_args="true"/>

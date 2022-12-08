@@ -1,80 +1,122 @@
+#!/usr/bin/env python3
+
 # Brennan Miller-Klugman
 # 12/07/22
-# This script is used to monitor CPU and ram usage of the laptop controlling the turtlebot
+# This script is used to listen to messages published by the robot and publish affect messages 
 
 # Referances:
-# 
-
-
-http://docs.ros.org/en/hydro/api/kobuki_msgs/html/msg/PowerSystemEvent.html
-http://docs.ros.org/en/hydro/api/kobuki_msgs/html/msg/RobotStateEvent.html
-http://docs.ros.org/en/hydro/api/kobuki_msgs/html/msg/CliffEvent.html
-
-diagnostic_msgs/DiagnosticArray #can be used to get laptop charge and base charge
-"Laptop Battery"
-
-
-"mobile_base_nodelet_manager: Battery"
-    values:
-      -
-        key: "Voltage (V)"
-        value: "16"
-      -
-        key: "Percent"
-        value: "85.6061"
-#POTENTIALLY USEFUL
-http://docs.ros.org/en/hydro/api/kobuki_msgs/html/msg/MotorPower.html
-http://docs.ros.org/en/hydro/api/kobuki_msgs/html/msg/ButtonEvent.html
+# http://docs.ros.org/
+# https://www.programiz.com/python-programming/nested-dictionary
 
 import rospy
 from std_msgs.msg import String
 from move_base_msgs.msg import MoveBaseActionResult
-from kobuki_msgs.msg import BumperEvent # http://docs.ros.org/en/hydro/api/kobuki_msgs/html/msg/BumperEvent.html
+from kobuki_msgs.msg import BumperEvent, CliffEvent
 from std_msgs.msg import Float32
+from diagnostic_msgs.msg import DiagnosticArray
+
 
 class affectual_mapping:
     def __init__(self):
+        self.event_monitor = {
+                "bump" : {"status": False, "time": 0, "priority": 0},
+                "cliff" : {"status": False, "time": 0, "priority": 1},
+                "laptop_battery" : {"status": False, "time": 0, "priority": 3},
+                "base_battery" : {"status": False, "time": 0, "priority": 4},
+                "cpu" : {"status": False, "time": 0, "priority": 5},
+                "memory" : {"status": False, "time": 0, "priority": 6},
+                "goal" : {"status": False, "time": 0, "priority": 2}
+            }
         
-        self.affects = {"bump":"sad", "battery_low": "tired"} # TODO : complete a dictionary mapping
+        self.last_published_affect = ""
 
-        rospy.init_node('affectual_mapping') #initalize ros node
+        self.affects = {"bump": "sad", "battery_low": "tired"}
 
-        self.robot_name = 'locobot' # TODO:Use argparse https://docs.python.org/3/library/argparse.html (Or ros parameter server) to get robot name
+        rospy.init_node('affectual_mapping')
+
+        self.robot_name = rospy.get_param("robot_name")
 
         self.affect_publisher = rospy.Publisher(
-            f'/{self.robot_name}/affect', String, queue_size=3)  # publisher for robot affect, this is what is taken as input in Unity
+            f'/{self.robot_name}/affect', String, queue_size=3) 
 
-        rospy.Subscriber(f'/{self.robot_name}/battery', BATTERYMESSAGE TYPE, self.battery)  # subscriber for battery level, every time a new battery message is recieved, the battery function is called #TODO: find what type the battery message is
-               
-        rospy.Subscriber(f'/{self.robot_name}/move_base/result', MoveBaseActionResult, self.goal_tracker)  # subscriber for hazard detection (bump sensor)
+        rospy.Subscriber(f'/{self.robot_name}/laptop_battery_percentage',
+                         Float32, self.base_battery)  # subscriber for laptop battery
 
-        rospy.Subscriber(f'/{self.robot_name}/bumper', BumperEvent, self.hazzard)  # subscriber for hazard detection
-        
-        rospy.Subscriber(f'/{self.robot_name}/cpu_usage', Float32, self.cpu)  # subscriber for hazard detection
+        rospy.Subscriber(f'/{self.robot_name}/cpu_usage', Float32, self.cpu)
 
-        rospy.Subscriber(f'/{self.robot_name}/memory_usage', Float32, self.memory)  # subscriber for hazard detection
+        rospy.Subscriber(f'/{self.robot_name}/memory_usage',
+                         Float32, self.memory)
+
+        # subscriber for diagnostic messages, used to get base battery level
+        rospy.Subscriber(f'/{self.robot_name}/diagnostics',
+                         DiagnosticArray, self.diagnostic)
+
+        rospy.Subscriber(f'/{self.robot_name}/move_base/result',
+                         MoveBaseActionResult, self.goal_tracker)
+
+        rospy.Subscriber(f'/{self.robot_name}/bumper',
+                         BumperEvent, self.bumper)
+
+        rospy.Subscriber(f'/{self.robot_name}/cliff', CliffEvent, self.cliff)
+
+        # call Query function every 5 seconds
+        rospy.Timer(rospy.Duration(1), self.query)
 
         rospy.spin()
 
-    def hazzard(self, data):
+    def bumper(self, data):
         if data.state == 1:
-            self.affect_publisher.publish(self.affects["bump"])
-    
+            self.event_monitor["bump"]["status"] = True
+            self.event_monitor["bump"]["time"] = rospy.get_time()
+
+    def cliff(self, data):
+        if data.state == 1:
+            self.event_monitor["cliff"]["status"] = True
+            self.event_monitor["cliff"]["time"] = rospy.get_time()
+
     def cpu(self, data):
         if data.data > 70:
-            self.affect_publisher.publish(self.affects["bump"])
-    
+            self.event_monitor["cpu"]["status"] = True
+            self.event_monitor["cpu"]["time"] = rospy.get_time()
+
     def memory(self, data):
         if data.data > 70:
-            self.affect_publisher.publish(self.affects["bump"])
-    
-    def battery(self, data):
-        if data.battery_level <= 20: #if battery is below some threshold, publish tired affect... could also have multiple stages of tiredness
-            self.affect_publisher.publish(self.affects["battery_low"])
+            self.event_monitor["memory"]["status"] = True
+            self.event_monitor["memory"]["time"] = rospy.get_time()
 
     def goal_tracker(self, data):
-        if data.status.status == 4 or data.status.status == 5: #if goal is not reached, publish sad affect
-            self.affect_publisher.publish("confused")
+        if data.status.status == 4 or data.status.status == 5:  # if goal is not reached, publish sad affect
+            self.event_monitor["goal"]["status"] = True
+            self.event_monitor["goal"]["time"] = rospy.get_time()
+    
+    def diagnostic(self, data):  # Use diagnostic messages to check kobuki battery level
+        for val in data.status:
+            if val.name == "mobile_base_nodelet_manager: Battery":
+                if val.values[2].value <= 20:
+            self.event_monitor["base_battery"]["status"] = True
+            self.event_monitor["base_battery"]["time"] = rospy.get_time()
+
+    def laptop_battery(self, data):
+        if data.data <= 20:
+            self.event_monitor["laptop_battery"]["status"] = True
+            self.event_monitor["laptop_battery"]["time"] = rospy.get_time()
+
+    def query(self, data):
+        affect_to_display = ""
+        for key, value in self.event_monitor.items():
+            if value["status"] == True: 
+                if rospy.get_time().secs - value["time"].secs > 5: # reset event if it has been triggered for more than 5 seconds
+                    value["status"] = False
+                    value["time"] = 0
+                else:
+                    if affect_to_display == "":
+                        affect_to_display = key
+                    elif self.event_monitor[affect_to_display]["priority"] > value["priority"]:
+                        affect_to_display = key
+
+        if(self.last_published_affect != self.affects[key]): # If affect has changed, publish new affect
+            self.affect_publisher.publish(self.affects[key])
+            self.last_published_affect = self.affects[key]
 
 if __name__ == '__main__':
     affectual_mapping()
