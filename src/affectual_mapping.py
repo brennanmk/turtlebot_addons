@@ -34,13 +34,11 @@ class affectual_mapping:
 
         rospy.init_node('affectual_mapping')
 
-        self.robot_name = rospy.get_param("robot_name")
-
         self.affect_publisher = rospy.Publisher(
-            f'/{self.robot_name}/affect', String, queue_size=3) 
+            '/affect', String, queue_size=3) 
 
         rospy.Subscriber('/laptop_battery_percentage',
-                         Float32, self.base_battery)  # subscriber for laptop battery
+                         Float32, self.diagnostic)  # subscriber for laptop battery
 
         rospy.Subscriber('/cpu_usage', Float32, self.cpu)
 
@@ -57,7 +55,7 @@ class affectual_mapping:
         rospy.Subscriber('/mobile_base/events/bumper',
                          BumperEvent, self.bumper)
 
-        rospy.Subscriber('/{mobile_base/events/cliff', CliffEvent, self.cliff)
+        rospy.Subscriber('/mobile_base/events/cliff', CliffEvent, self.cliff)
 
         # call Query function every 5 seconds
         rospy.Timer(rospy.Duration(1), self.query)
@@ -92,9 +90,9 @@ class affectual_mapping:
     def diagnostic(self, data):  # Use diagnostic messages to check kobuki battery level
         for val in data.status:
             if val.name == "mobile_base_nodelet_manager: Battery":
-                if val.values[2].value <= 20:
-            self.event_monitor["base_battery"]["status"] = True
-            self.event_monitor["base_battery"]["time"] = rospy.get_time()
+                if val.values[0].value <= 20:
+                    self.event_monitor["base_battery"]["status"] = True
+                    self.event_monitor["base_battery"]["time"] = rospy.get_time()
 
     def laptop_battery(self, data):
         if data.data <= 20:
@@ -114,9 +112,9 @@ class affectual_mapping:
                     elif self.event_monitor[affect_to_display]["priority"] > value["priority"]:
                         affect_to_display = key
 
-        if(self.last_published_affect != self.affects[key]): # If affect has changed, publish new affect
-            self.affect_publisher.publish(self.affects[key])
-            self.last_published_affect = self.affects[key]
+        if(self.last_published_affect != self.affects[affect_to_display] and affect_to_display != ""): # If affect has changed, publish new affect
+            self.affect_publisher.publish(self.affects[affect_to_display])
+            self.last_published_affect = self.affects[affect_to_display]
 
 if __name__ == '__main__':
     affectual_mapping()
