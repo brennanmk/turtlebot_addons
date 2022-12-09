@@ -1,3 +1,5 @@
+#!/usr/bin/env python2.7
+
 # Brennan Miller-Klugman
 # 12/07/22
 # This script is used to monitor battery life, and CPU + ram usage of a computer using psutil

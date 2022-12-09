@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2.7
 
 # Brennan Miller-Klugman
 # 12/07/22
@@ -39,25 +39,25 @@ class affectual_mapping:
         self.affect_publisher = rospy.Publisher(
             f'/{self.robot_name}/affect', String, queue_size=3) 
 
-        rospy.Subscriber(f'/{self.robot_name}/laptop_battery_percentage',
+        rospy.Subscriber('/laptop_battery_percentage',
                          Float32, self.base_battery)  # subscriber for laptop battery
 
-        rospy.Subscriber(f'/{self.robot_name}/cpu_usage', Float32, self.cpu)
+        rospy.Subscriber('/cpu_usage', Float32, self.cpu)
 
-        rospy.Subscriber(f'/{self.robot_name}/memory_usage',
+        rospy.Subscriber('/memory_usage',
                          Float32, self.memory)
 
         # subscriber for diagnostic messages, used to get base battery level
-        rospy.Subscriber(f'/{self.robot_name}/diagnostics',
+        rospy.Subscriber('/diagnostics',
                          DiagnosticArray, self.diagnostic)
 
-        rospy.Subscriber(f'/{self.robot_name}/move_base/result',
+        rospy.Subscriber('/move_base/result',
                          MoveBaseActionResult, self.goal_tracker)
 
-        rospy.Subscriber(f'/{self.robot_name}/bumper',
+        rospy.Subscriber('/mobile_base/events/bumper',
                          BumperEvent, self.bumper)
 
-        rospy.Subscriber(f'/{self.robot_name}/cliff', CliffEvent, self.cliff)
+        rospy.Subscriber('/{mobile_base/events/cliff', CliffEvent, self.cliff)
 
         # call Query function every 5 seconds
         rospy.Timer(rospy.Duration(1), self.query)
