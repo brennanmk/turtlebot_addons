@@ -111,10 +111,10 @@ class affectual_mapping:
                         affect_to_display = key
                     elif self.event_monitor[affect_to_display]["priority"] > value["priority"]:
                         affect_to_display = key
-
-        if(self.last_published_affect != self.affects[affect_to_display] and affect_to_display != ""): # If affect has changed, publish new affect
-            self.affect_publisher.publish(self.affects[affect_to_display])
-            self.last_published_affect = self.affects[affect_to_display]
+        if (affect_to_display != ""):
+            if(self.last_published_affect != self.affects[affect_to_display]): # If affect has changed, publish new affect
+                self.affect_publisher.publish(self.affects[affect_to_display])
+                self.last_published_affect = self.affects[affect_to_display]
 
 if __name__ == '__main__':
     affectual_mapping()
