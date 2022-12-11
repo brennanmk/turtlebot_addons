@@ -103,7 +103,7 @@ class affectual_mapping:
         affect_to_display = ""
         for key, value in self.event_monitor.items():
             if value["status"] == True: 
-                if rospy.get_time().secs - value["time"].secs > 5: # reset event if it has been triggered for more than 5 seconds
+                if rospy.get_time() - value["time"] > 5: # reset event if it has been triggered for more than 5 seconds
                     value["status"] = False
                     value["time"] = 0
                 else:
