@@ -2,13 +2,11 @@
 
 '''
 Written by Brennan Miller-Klugman 
-10/18/22
+12/14/22
 HRI Interactions Assignment
 
-References:
-Created using the locobots provided documentation and source code (Documentation can be found at: https://www.trossen robotics.com/docs/interbotix_xslocobots/ros_packages/)
-
-https://www.ros.org/ was also utilized (used to view message definitions such as the Twist() message used for the /cmd_vel/ topic)
+Referances:
+https://www.ros.org/
 '''
 
 import rospy
@@ -16,48 +14,43 @@ from move_base_msgs.msg import MoveBaseActionGoal, MoveBaseActionResult
 from std_msgs.msg import String
 import time
 from geometry_msgs.msg import Twist
-from kobuki_msgs.msg import BumperEvent, CliffEvent
 
 class test_script:
     def __init__(self):
         rospy.init_node('test_script')
 
         self.loc_publisher = rospy.Publisher(
-            '/move_base/goal', MoveBaseActionGoal, queue_size=3)  # publisher for loc
+            '/move_base/goal', MoveBaseActionGoal, queue_size=3)  # publisher for location
 
         self.base_publisher = rospy.Publisher(
             '/mobile_base/commands/velocity', Twist, queue_size=3)  # publisher for base movement
 
         self.affect_publisher = rospy.Publisher(
-            '/affect', String, queue_size=3)  # publisher for base movement
+            '/affect', String, queue_size=3)  # publisher for base affect emoji
         time.sleep(5)
         self.affect_publisher.publish("happy")
 
-        self.move_to_loc(0.691, 0.692, 0.000, 0.000, 0.000, 0.969, 0.245) #move to start location
-        rospy.wait_for_message('/move_base/result', MoveBaseActionResult) #wait for confirmation that the locobot has moved to the correct pos
+        self.move_to_loc(0.691, 0.692, 0.000, 0.000, 0.000, 0.969, 0.245) #move to
+        rospy.wait_for_message('/move_base/result', MoveBaseActionResult) #wait for confirmation that the locobot has moved to the correct posistion
         temp = raw_input("Press enter to continue")
 
         self.affect_publisher.publish("confused")
-        self.control_base(0,0.4,20) #spin for 10 seconds
+        self.control_base(0,0.4,20) #spin (localization failure)
         temp = raw_input("Press enter to continue")
 
         self.affect_publisher.publish("happy")
 
-        self.move_to_loc(-0.481, 0.794, 0.000, 0.000, 0.000, 0.960, 0.279) #move to start location
-        rospy.wait_for_message('/move_base/result', MoveBaseActionResult) #wait for confirmation that the locobot has moved to the correct pos
-        self.affect_publisher.publish("tired")
+        self.move_to_loc(-0.481, 0.794, 0.000, 0.000, 0.000, 0.960, 0.279) #move to
+        rospy.wait_for_message('/move_base/result', MoveBaseActionResult) #wait for confirmation that the locobot has moved to the correct posistion
+        self.affect_publisher.publish("tired") #battery low
         temp = raw_input("Press enter to continue")
         
         self.affect_publisher.publish("happy")
 
-        self.move_to_loc(-0.202, 3.476, 0.000, 0.000, 0.000, 0.480, 0.877) #move to start location
-        rospy.wait_for_message('/move_base/result', MoveBaseActionResult) #wait for confirmation that the locobot has moved to the correct pos
-        self.affect_publisher.publish("sad")
+        self.move_to_loc(-0.202, 3.476, 0.000, 0.000, 0.000, 0.480, 0.877) #move to
+        rospy.wait_for_message('/move_base/result', MoveBaseActionResult) #wait for confirmation that the locobot has moved to the correct posistion
+        self.affect_publisher.publish("sad") #runtime error
         temp = raw_input("Press enter to continue")
-
-        self.affect_publisher.publish("angry")
-        temp = raw_input("Press enter to continue")
-        self.affect_publisher.publish("happy")
 
         rospy.spin()
 

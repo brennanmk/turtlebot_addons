@@ -30,7 +30,7 @@ class affectual_mapping:
         
         self.last_published_affect = ""
 
-        self.affects = {"bump": "sad", "battery_low": "tired"}
+        self.affects = {"bump": "sad", "laptop_battery": "tired", "base_battery": "tired", "cpu": "hot", "memory": "hot", "goal": "confused", "cliff": "angry"} # mappings from event_monitor keys to emoji messages
 
         rospy.init_node('affectual_mapping')
 
@@ -63,31 +63,37 @@ class affectual_mapping:
         rospy.spin()
 
     def bumper(self, data):
+        # if bump sensor is pressed, set the status in the event_monitor to true
         if data.state == 1:
             self.event_monitor["bump"]["status"] = True
             self.event_monitor["bump"]["time"] = rospy.get_time()
 
     def cliff(self, data):
+        # if cliff sensor is triggered, set the status in the event_monitor to true
         if data.state == 1:
             self.event_monitor["cliff"]["status"] = True
             self.event_monitor["cliff"]["time"] = rospy.get_time()
 
     def cpu(self, data):
+         # if CPU usage is above 70%, set the status in the event_monitor to true
         if data.data > 70:
             self.event_monitor["cpu"]["status"] = True
             self.event_monitor["cpu"]["time"] = rospy.get_time()
 
     def memory(self, data):
+        # if memory usage is above 70%, set the status in the event_monitor to true
         if data.data > 70:
             self.event_monitor["memory"]["status"] = True
             self.event_monitor["memory"]["time"] = rospy.get_time()
 
     def goal_tracker(self, data):
-        if data.status.status == 4 or data.status.status == 5:  # if goal is not reached, publish sad affect
+        # if goal is not reached, set the status in the event_monitor to true
+        if data.status.status == 4 or data.status.status == 5:  
             self.event_monitor["goal"]["status"] = True
             self.event_monitor["goal"]["time"] = rospy.get_time()
     
-    def diagnostic(self, data):  # Use diagnostic messages to check kobuki battery level
+    def diagnostic(self, data):  
+        # Use diagnostic messages to check kobuki battery level if below 20%, set the status in the event_monitor to true
         for val in data.status:
             if val.name == "mobile_base_nodelet_manager: Battery":
                 if val.values[0].value <= 20:
@@ -95,18 +101,20 @@ class affectual_mapping:
                     self.event_monitor["base_battery"]["time"] = rospy.get_time()
 
     def laptop_battery(self, data):
+        # If laptop battery below 20%, set the status in the event_monitor to true
         if data.data <= 20:
             self.event_monitor["laptop_battery"]["status"] = True
             self.event_monitor["laptop_battery"]["time"] = rospy.get_time()
 
     def query(self, data):
+        # Check if any of the events in the event_monitor are true, if so, publish the corresponding affect of the highest priority true event
         affect_to_display = ""
         for key, value in self.event_monitor.items():
             if value["status"] == True: 
                 if rospy.get_time() - value["time"] > 5: # reset event if it has been triggered for more than 5 seconds
                     value["status"] = False
                     value["time"] = 0
-                else:
+                else: #check if event has higher priority than the current affect to display
                     if affect_to_display == "":
                         affect_to_display = key
                     elif self.event_monitor[affect_to_display]["priority"] > value["priority"]:
